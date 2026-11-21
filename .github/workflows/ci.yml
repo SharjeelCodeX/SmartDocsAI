@@ -64,4 +64,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/smartdocs-ai:latest
+          tags: ghcr.io/sharjeelcodex/smartdocs-ai:latest
