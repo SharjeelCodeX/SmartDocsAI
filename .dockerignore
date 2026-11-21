@@ -1,0 +1,19 @@
+
+.venv/
+.venv314/
+__pycache__/
+*.py[cod]
+.git/
+.env
+.env.*
+!.env.example
+documents_corrupted_backup.json
+s3-test.txt
+test_s3.py
+
+# Local document data and backups
+uploads/
+documents.json
+documents.json.lock
+documents.json.pre-docker-backup
+documents_corrupted_backup.json

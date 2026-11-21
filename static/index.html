@@ -1,0 +1,778 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartDocs AI | Dashboard</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg:#081326; --sidebar:#071226; --panel:#0d1c35;
+  --panel2:#10213d; --border:#203758; --text:#f1f5ff;
+  --muted:#9aafd0; --blue:#4263ff; --cyan:#65c9ff;
+  --green:#22d3a6; --amber:#f8b84e; --pink:#fb78a7;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:249px minmax(0,1fr)}
+.sidebar{background:linear-gradient(180deg,#08142a,#071124);border-right:1px solid #1b2e4d;padding:24px 17px;display:flex;flex-direction:column;gap:27px}
+.brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:800;letter-spacing:-.5px;padding:0 10px}
+.brand-icon{width:31px;height:31px;display:grid;place-items:center;background:linear-gradient(145deg,#9d7cff,#405aff);border-radius:9px;font-size:20px}
+.brand span:last-child{color:#a5aaff}
+.nav{display:grid;gap:8px}
+.nav button{border:1px solid transparent;background:transparent;color:#c4d2eb;text-align:left;padding:13px 14px;border-radius:10px;display:flex;align-items:center;gap:13px;font-size:13px}
+.nav button.active,.nav button:hover{background:#183b91;border-color:#2853d8;color:white}
+.nav-icon{font-size:18px;width:22px;text-align:center}
+.sidebar-bottom{margin-top:auto;padding:16px;background:#0c1d37;border:1px solid var(--border);border-radius:12px}
+.cloud-icon{font-size:23px;margin-bottom:9px}
+.sidebar-bottom strong{display:block;font-size:13px;margin-bottom:5px}
+.sidebar-bottom p{font-size:11px;line-height:1.6;color:var(--muted);margin:0}
+.main{min-width:0}
+.topbar{height:55px;border-bottom:1px solid #1b2e4d;display:flex;align-items:center;justify-content:flex-end;padding:0 27px;background:#0b1930}
+.user{display:flex;align-items:center;gap:10px;font-size:12px}
+.avatar{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;background:#4967ff;font-weight:700}
+.content{padding:25px 30px 32px;max-width:1750px;margin:auto}
+.welcome{margin-bottom:26px}
+.welcome h1{font-size:26px;margin:0 0 9px;letter-spacing:-.6px}
+.welcome p{margin:0;color:#c1cfe7;font-size:14px}
+.layout{display:grid;grid-template-columns:minmax(0,1.85fr) minmax(330px,1fr);gap:24px;align-items:start}
+.left,.right{min-width:0}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:24px}
+.stat{min-width:0;border:1px solid var(--border);border-radius:13px;padding:16px;background:linear-gradient(145deg,#10213b,#0b1930)}
+.stat.blue{border-color:#205d9b}.stat.green{border-color:#075b54}.stat.amber{border-color:#604b2c}.stat.pink{border-color:#71304f}
+.stat-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:12px;font-size:21px;margin-bottom:11px}
+.blue .stat-icon{background:#245be5}.green .stat-icon{background:#0eae91}.amber .stat-icon{background:#e9a537}.pink .stat-icon{background:#ed5979}
+.stat-label{font-size:12px;color:#c5d3ea}
+.stat-number{font-size:24px;font-weight:750;margin:6px 0}
+.stat-foot{font-size:11px;color:#a9c5e5}
+.panel{background:linear-gradient(145deg,#0d1d37,#0b1930);border:1px solid var(--border);border-radius:13px;overflow:hidden}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px;border-bottom:1px solid #1b304f}
+.panel-head h2{font-size:15px;margin:0}
+.panel-head small{color:var(--muted)}
+.upload-panel{margin-bottom:22px}
+.dropzone{margin:0;padding:26px 16px 20px;min-height:244px;border:1px dashed #4271ff;border-radius:12px;background:radial-gradient(ellipse at center,#14275055,transparent 75%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;transition:.2s}
+.dropzone.dragover{background:#1b3970;border-color:#9a8bff}
+.upload-symbol{font-size:39px;color:#697bff;margin-bottom:10px}
+.dropzone h3{font-size:17px;margin:0 0 8px}
+.dropzone p{font-size:12px;color:#bdcce5;margin:0 0 17px}
+.file-types{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;margin-bottom:13px}
+.file-types span{font-size:10px;padding:5px 13px;border-radius:20px;border:1px solid #28436a;background:#122747}
+.hint{font-size:10px;color:var(--muted);margin-bottom:14px}
+.btn{border:1px solid #315ce5;background:linear-gradient(120deg,#5268ff,#3159ee);color:white;border-radius:9px;padding:11px 16px;font-size:12px;font-weight:700}
+.btn:hover{filter:brightness(1.12)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.secondary{background:#0c1a30;border-color:#345078;color:#dbe7ff}
+.btn.small{padding:8px 11px;font-size:11px}
+#fileInput{display:none}
+.message{margin:0 17px 14px;font-size:12px;color:#a9c5e5;overflow-wrap:anywhere}
+.message:empty{display:none}
+.message.error{color:#ffb4c2}.message.success{color:#7ef2d0}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:580px}
+th,td{padding:13px 11px;text-align:left;border-bottom:1px solid #192d4b;font-size:11px}
+th{background:#10213d;color:#c4d4ef;font-weight:600}
+td{color:#d7e4fa}
+tbody tr{cursor:pointer}
+tbody tr:hover,tbody tr.selected{background:#122847}
+.file-cell{display:flex;align-items:center;gap:10px;min-width:180px}
+.file-icon{width:32px;height:37px;display:grid;place-items:center;border-radius:8px;background:#3159dc;font-size:17px;flex-shrink:0}
+.file-name{font-weight:650;overflow-wrap:anywhere;max-width:240px}
+.subtext{color:var(--muted);font-size:10px;margin-top:4px}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:5px 9px;font-size:10px;font-weight:650;white-space:nowrap;background:#162b4c;color:#c4d8ff}
+.pill.green{background:#073d38;color:#60f1d2}
+.pill.amber{background:#49351a;color:#ffd58a}
+.pill.red{background:#482032;color:#ffabc5}
+.pill.purple{background:#30235c;color:#c5b5ff}
+.empty{padding:24px;color:var(--muted);font-size:12px;text-align:center}
+.right{display:grid;gap:13px}
+.selected-file{padding:16px}
+.file-heading{display:flex;align-items:center;gap:12px}
+.file-heading .file-icon{width:38px;height:42px}
+.file-heading-main{flex:1;min-width:0}
+.file-heading-main strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.file-heading-main small{display:block;color:var(--muted);font-size:10px;margin-top:6px}
+.file-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:17px}
+.file-actions .btn{flex:1;white-space:nowrap}
+.section{padding:15px}
+.section-title{font-size:13px;margin:0 0 18px;display:flex;align-items:center;gap:9px}
+.section-title span{width:24px;height:24px;display:grid;place-items:center;background:#193a70;border-radius:7px}
+.classification{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.classification .file-icon{width:38px;height:40px}
+.classification strong{font-size:18px}
+.confidence{margin-left:auto;text-align:right;font-size:11px;color:#b7cae8}
+.confidence strong{display:block;font-size:17px;color:white;margin-top:4px}
+.score-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(50px,1.4fr) 30px;align-items:center;gap:9px;margin:12px 0;font-size:10px}
+.bar{height:8px;background:#132746;border-radius:20px;overflow:hidden}
+.bar span{height:100%;display:block;border-radius:20px;background:linear-gradient(90deg,#3b82f6,#3b9cff)}
+.score{color:#b8c9e4;text-align:right}
+.fields{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,1.25fr);gap:12px 10px;font-size:11px}
+.fields .key{color:#c3d2eb}
+.fields .value{color:#8fd6ff;overflow-wrap:anywhere}
+.warning{padding:13px;border:1px solid #66502d;background:#25251f;border-radius:9px;margin-top:10px;color:#ffdc8d;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
+.success-box{padding:13px;border:1px solid #176052;background:#102d2d;border-radius:9px;margin-top:10px;color:#8df2d5;font-size:11px}
+.text-box{max-height:260px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#071225;border:1px solid #1d3150;border-radius:8px;padding:12px;font-size:11px;line-height:1.65;color:#c5d6ed}
+.hidden{display:none!important}
+#detailsSection{margin-top:13px}
+@media(max-width:1250px){
+  .content{padding:22px 20px}
+  .layout{grid-template-columns:minmax(0,1.4fr) minmax(300px,1fr);gap:16px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:850px){
+  .app{grid-template-columns:70px minmax(0,1fr)}
+  .sidebar{padding:22px 9px}
+  .brand{padding:0;justify-content:center}
+  .brand .brand-name,.nav-label,.sidebar-bottom{display:none}
+  .nav button{justify-content:center;padding:13px 5px}
+  .nav-icon{font-size:20px}
+  .layout{grid-template-columns:1fr}
+  .right{grid-row:2}
+}
+@media(max-width:520px){
+  .content{padding:19px 12px}
+  .topbar{padding:0 15px}
+  .welcome h1{font-size:22px}
+  .stats{gap:9px}
+  .stat{padding:12px}
+  .stat-number{font-size:21px}
+  .dropzone{min-height:220px}
+  .panel-head{padding:14px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">◈</span><span class="brand-name">SmartDocs <span>AI</span></span></div>
+    <nav class="nav">
+      <button class="active" data-view="dashboard"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></button>
+      <button data-view="upload"><span class="nav-icon">☁</span><span class="nav-label">Upload Document</span></button>
+      <button data-view="documents"><span class="nav-icon">▤</span><span class="nav-label">Documents</span></button>
+      <button data-view="settings"><span class="nav-icon">⚙</span><span class="nav-label">Settings</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="cloud-icon">☁️</div>
+      <strong>Powered by AI</strong>
+      <p>Extract · Classify · Organize your documents, smarter.</p>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="user"><span class="avatar">S</span><span>Smart User</span><span>⌄</span></div>
+    </div>
+    <main class="content">
+      <div class="welcome">
+        <h1>👋 Welcome to SmartDocs AI</h1>
+        <p>Upload your documents and let AI extract, classify and organize the important information for you.</p>
+      </div>
+
+      <div class="layout">
+        <div class="left">
+          <div class="stats">
+            <div class="stat blue"><div class="stat-icon">▤</div><div class="stat-label">Total Documents</div><div class="stat-number" id="totalCount">0</div><div class="stat-foot">Documents uploaded</div></div>
+            <div class="stat green"><div class="stat-icon">✓</div><div class="stat-label">Completed</div><div class="stat-number" id="completedCount">0</div><div class="stat-foot">Processing finished</div></div>
+            <div class="stat amber"><div class="stat-icon">◷</div><div class="stat-label">Processing</div><div class="stat-number" id="processingCount">0</div><div class="stat-foot">Currently running</div></div>
+            <div class="stat pink"><div class="stat-icon">⚑</div><div class="stat-label">Needs Review</div><div class="stat-number" id="reviewCount">0</div><div class="stat-foot">Requires attention</div></div>
+          </div>
+
+          <section class="panel upload-panel" id="uploadPanel">
+            <div class="dropzone" id="dropzone">
+              <div class="upload-symbol">☁↑</div>
+              <h3>Upload a Document</h3>
+              <p>Drag and drop your file here, or click to browse</p>
+              <div class="file-types"><span>PDF</span><span>PNG</span><span>JPG</span><span>JPEG</span></div>
+              <div class="hint">Maximum file size: 10 MB</div>
+              <input id="fileInput" type="file" accept=".pdf,.png,.jpg,.jpeg">
+              <button class="btn" id="chooseFile" type="button">⇧ &nbsp; Choose File</button>
+            </div>
+            <div class="message" id="message" role="status" aria-live="polite"></div>
+          </section>
+
+          <section class="panel" id="documentsPanel">
+            <div class="panel-head">
+              <h2>▤ &nbsp; Recent Documents</h2>
+              <button class="btn secondary small" id="refreshButton">Refresh ↻</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>File Name</th><th>Type</th><th>Status</th><th>Size</th></tr></thead>
+                <tbody id="documentRows"><tr><td colspan="4" class="empty">Loading documents...</td></tr></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel hidden" id="settingsPanel" style="margin-top:15px">
+            <div class="panel-head"><h2>⚙ &nbsp; Settings</h2></div>
+            <div style="padding:18px;font-size:12px;color:var(--muted);line-height:1.8">
+              <p><strong>SmartDocs AI</strong></p>
+              <p>Supported formats: PDF, PNG, JPG, JPEG.</p>
+              <p>Maximum upload size: 10 MB.</p>
+              <p>Document processing uses the current local FastAPI backend.</p>
+            </div>
+          </section>
+        </div>
+
+        <aside class="right">
+          <section class="panel selected-file">
+            <div class="file-heading">
+              <div class="file-icon">▤</div>
+              <div class="file-heading-main"><strong id="selectedName">Select a document</strong><small id="selectedMeta">Choose a document from the list</small></div>
+              <span class="pill" id="selectedStatus">Ready</span>
+            </div>
+            <div class="file-actions">
+              <button class="btn small" id="viewDetailsButton">◎ View Details</button>
+              <button class="btn secondary small" id="copyTextButton">▢ Copy Text</button>
+              <button class="btn secondary small" id="copyDataButton">{ } Copy JSON</button>
+              <button class="btn secondary small" id="viewOriginalButton" type="button">📄 View Original</button>
+            </div>
+          </section>
+
+          <section class="panel section">
+            <h2 class="section-title"><span>▤</span> Document Classification</h2>
+            <div class="classification">
+              <div class="file-icon">▤</div>
+              <div><strong id="documentType">—</strong></div>
+              <div class="confidence">Top Relative Score<strong id="confidence">—</strong></div>
+            </div>
+            <div id="scores"><p class="empty">Upload or select a document to view classification.</p></div>
+          </section>
+
+          <section class="panel section">
+            <h2 class="section-title"><span>▧</span> Extracted Fields</h2>
+            <div id="fields" class="fields"><span class="key">Status</span><span class="value">Waiting for document</span></div>
+          </section>
+
+          <section class="panel section">
+            <h2 class="section-title"><span>⚠</span> Validation Warnings</h2>
+            <div id="validation"><p class="empty">No document selected.</p></div>
+          </section>
+
+            <section class="panel section" id="detailsSection">
+            <h2 class="section-title"><span>≡</span> Extracted Text</h2>
+            <pre class="text-box" id="extractedText">No text available.</pre>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let documents = {};
+let selectedFilename = null;
+let busy = false;
+let selectedData = null;
+let extractedTextValue = "";
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined && text !== null) node.textContent = String(text);
+  return node;
+}
+function label(value) {
+  return String(value || "").replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+function bytes(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(2) + " MB";
+}
+async function api(url, options = {}) {
+  const response = await fetch(url, options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data.detail || "Request failed";
+    throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+  }
+  return data;
+}
+function message(text, type = "") {
+  $("message").textContent = text || "";
+  $("message").className = "message " + type;
+}
+function docData(doc) {
+  return doc?.structured_data || {};
+}
+function statusPill(status) {
+  const normalized = String(status || "unknown").toLowerCase();
+  const type = ["completed"].includes(normalized) ? "green"
+    : ["failed"].includes(normalized) ? "red"
+    : ["processing", "uploaded", "needs_ocr"].includes(normalized) ? "amber" : "";
+  return {type, text: label(normalized)};
+}
+function renderStats() {
+  const entries = Object.values(documents);
+
+  $("totalCount").textContent = entries.length;
+
+  $("completedCount").textContent = entries.filter(
+    d => d.processing_status === "completed"
+  ).length;
+
+  $("processingCount").textContent = entries.filter(
+    d => ["uploaded", "processing"].includes(d.processing_status)
+  ).length;
+
+  $("reviewCount").textContent = entries.filter(d =>
+    docData(d).review_required === true ||
+    ["needs_ocr", "failed"].includes(d.processing_status)
+  ).length;
+}
+function renderRows() {
+  const body = $("documentRows");
+  body.replaceChildren();
+
+  const entries = Object.entries(documents)
+    .map(([filename, doc], index) => ({
+      filename,
+      doc,
+      index
+    }))
+    .sort((a, b) => {
+      const timeA = Date.parse(
+        a.doc.uploaded_at || a.doc.created_at || ""
+      );
+
+      const timeB = Date.parse(
+        b.doc.uploaded_at || b.doc.created_at || ""
+      );
+
+      if (Number.isFinite(timeA) && Number.isFinite(timeB)) {
+        return timeB - timeA;
+      }
+
+      if (Number.isFinite(timeA)) return -1;
+      if (Number.isFinite(timeB)) return 1;
+
+      // Legacy records without timestamps: newest insertion first.
+      return b.index - a.index;
+    });
+
+  if (!entries.length) {
+    const row = el("tr");
+    const cell = el("td", "empty", "No documents uploaded yet.");
+    cell.colSpan = 4;
+    row.appendChild(cell);
+    body.appendChild(row);
+    return;
+  }
+
+  for (const { filename, doc } of entries) {
+    const row = el(
+      "tr",
+      filename === selectedFilename ? "selected" : ""
+    );
+
+    const fileCell = el("td");
+    const wrap = el("div", "file-cell");
+
+    wrap.appendChild(el("div", "file-icon", "▤"));
+
+    const names = el("div");
+
+    names.appendChild(
+      el("div", "file-name", doc.original_filename || filename)
+    );
+
+    names.appendChild(
+      el(
+        "div",
+        "subtext",
+        label(docData(doc).document_type || "Document")
+      )
+    );
+
+    wrap.appendChild(names);
+    fileCell.appendChild(wrap);
+    row.appendChild(fileCell);
+
+    const typeCell = el("td");
+
+    typeCell.appendChild(
+      el(
+        "span",
+        "pill",
+        label(docData(doc).document_type || "Pending")
+      )
+    );
+
+    row.appendChild(typeCell);
+
+    const statusCell = el("td");
+    const pill = statusPill(doc.processing_status);
+
+    statusCell.appendChild(
+      el("span", "pill " + pill.type, pill.text)
+    );
+
+    row.appendChild(statusCell);
+    row.appendChild(el("td", "", bytes(doc.size_bytes)));
+
+    row.addEventListener("click", () => selectDocument(filename));
+
+    body.appendChild(row);
+  }
+}
+function renderScores(data) {
+  const container = $("scores");
+  container.replaceChildren();
+  const scores = data.classification_scores || {};
+  const pairs = Object.entries(scores).sort((a,b) => Number(b[1]) - Number(a[1]));
+  if (!pairs.length) {
+    container.appendChild(el("p","empty","No classification scores returned by the API."));
+    $("confidence").textContent = "—";
+    return;
+  }
+  const max = Math.max(...pairs.map(p => Number(p[1]) || 0), 1);
+  const winner = pairs[0];
+  $("confidence").textContent = Math.round((Number(winner[1]) / max) * 100) + "%";
+  for (const [name, score] of pairs) {
+    const row = el("div","score-row");
+    row.appendChild(el("span","",label(name)));
+    const bar = el("div","bar");
+    const fill = el("span");
+    fill.style.width = Math.max(2, Math.min(100, Number(score) / max * 100)) + "%";
+    bar.appendChild(fill);
+    row.appendChild(bar);
+    row.appendChild(el("span","score",String(score)));
+    container.appendChild(row);
+  }
+}
+function renderFields(data, doc = {}) {
+  const container = $("fields");
+  container.replaceChildren();
+
+  const fields = data.fields || {};
+  const entries = Object.entries(fields);
+
+  if (!entries.length) {
+    let text = "No structured fields were extracted for this document.";
+
+    if (
+      doc.processing_status === "uploaded" ||
+      doc.processing_status === "processing"
+    ) {
+      text = "Document processing is still in progress.";
+    } else if (doc.processing_status === "needs_ocr") {
+      text = "Text could not be extracted reliably. Check the original document.";
+    } else if (doc.processing_status === "failed") {
+      text = "Processing failed. Check the validation warnings.";
+    } else if (!doc.structured_data && doc.extracted_text) {
+      text = "Text was extracted, but structured fields were not saved for this record yet.";
+    }
+
+    const empty = el("div", "empty", text);
+    empty.style.gridColumn = "1 / -1";
+    container.appendChild(empty);
+    return;
+  }
+
+  for (const [key, value] of entries) {
+    container.appendChild(el("span", "key", label(key)));
+
+    const displayValue = Array.isArray(value)
+      ? value.join(", ")
+      : (value ?? "—");
+
+    container.appendChild(el("span", "value", displayValue));
+  }
+}
+function renderValidation(doc, data) {
+  const container = $("validation");
+  container.replaceChildren();
+
+  const rawWarnings = data.validation_warnings;
+
+  const warnings = Array.isArray(rawWarnings)
+    ? [...rawWarnings]
+    : typeof rawWarnings === "string" && rawWarnings.trim()
+      ? [rawWarnings.trim()]
+      : [];
+
+  const missingFields = Array.isArray(data.missing_required_fields)
+    ? data.missing_required_fields
+    : [];
+
+  for (const field of missingFields) {
+    warnings.push("Missing required field: " + label(field));
+  }
+
+  if (doc.processing_error) {
+    warnings.unshift("Processing error: " + doc.processing_error);
+  }
+
+  if (
+    data.review_required &&
+    warnings.length === 0 &&
+    doc.processing_status === "completed"
+  ) {
+    warnings.push("Manual review is recommended for this document.");
+  }
+
+  const uniqueWarnings = [...new Set(warnings)];
+
+  if (
+    doc.processing_status === "uploaded" ||
+    doc.processing_status === "processing"
+  ) {
+    container.appendChild(
+      el("p", "empty", "Validation will be available after processing.")
+    );
+    return;
+  }
+
+  if (
+    doc.processing_status === "failed" &&
+    uniqueWarnings.length === 0
+  ) {
+    container.appendChild(
+      el("div", "warning", "Processing failed. Check the API logs for details.")
+    );
+    return;
+  }
+
+  if (uniqueWarnings.length === 0) {
+    if (data.document_type && data.document_type !== "unknown") {
+      container.appendChild(
+        el("div", "success-box", "✓ No validation warnings were returned.")
+      );
+    } else {
+      container.appendChild(
+        el("p", "empty", "No validation results are available.")
+      );
+    }
+
+    return;
+  }
+
+  for (const warning of uniqueWarnings) {
+    container.appendChild(
+      el("div", "warning", "⚠  " + warning)
+    );
+  }
+}
+function renderSelected(filename) {
+  const doc = documents[filename];
+  if (!doc) return;
+  const data = docData(doc);
+  selectedData = data;
+  extractedTextValue = doc.extracted_text || "";
+  $("selectedName").textContent = doc.original_filename || filename;
+  $("selectedMeta").textContent =
+    label(data.document_type || "Document") + " · " + bytes(doc.size_bytes) +
+    (doc.extraction_method ? " · " + doc.extraction_method : "");
+  const pill = statusPill(doc.processing_status);
+  $("selectedStatus").className = "pill " + pill.type;
+  $("selectedStatus").textContent = pill.text;
+  $("documentType").textContent = label(data.document_type || "Pending");
+  renderScores(data);
+  renderFields(data, doc);
+  renderValidation(doc, data);
+  $("extractedText").textContent = extractedTextValue || "No extracted text is available yet.";
+}
+function selectDocument(filename) {
+  selectedFilename = filename;
+  renderRows();
+  renderSelected(filename);
+}
+async function refreshDocuments() {
+  try {
+    const result = await api("/documents");
+
+    documents = result && typeof result === "object"
+      ? result
+      : {};
+
+    renderStats();
+    renderRows();
+
+    if (selectedFilename && documents[selectedFilename]) {
+      renderSelected(selectedFilename);
+      return;
+    }
+
+    const entries = Object.entries(documents);
+
+    entries.sort((a, b) => {
+      const timeA = Date.parse(a[1].uploaded_at || a[1].created_at || "");
+      const timeB = Date.parse(b[1].uploaded_at || b[1].created_at || "");
+
+      if (Number.isFinite(timeA) && Number.isFinite(timeB)) {
+        return timeB - timeA;
+      }
+      if (Number.isFinite(timeA)) return -1;
+      if (Number.isFinite(timeB)) return 1;
+
+      return 0;
+    });
+
+    const newestFilename = entries.length
+      ? entries[0][0]
+      : null;
+
+    if (newestFilename) {
+      selectDocument(newestFilename);
+      return;
+    }
+
+    selectedFilename = null;
+    selectedData = null;
+    extractedTextValue = "";
+
+    $("selectedName").textContent = "Select a document";
+    $("selectedMeta").textContent = "Choose a document from the list";
+    $("selectedStatus").className = "pill";
+    $("selectedStatus").textContent = "Ready";
+    $("documentType").textContent = "—";
+    $("confidence").textContent = "—";
+
+    $("scores").replaceChildren(
+      el("p", "empty", "Upload or select a document to view classification.")
+    );
+
+    $("fields").replaceChildren(
+      el("div", "empty", "No document selected.")
+    );
+
+    $("validation").replaceChildren(
+      el("p", "empty", "No document selected.")
+    );
+
+    $("extractedText").textContent = "No text available.";
+
+  } catch (error) {
+    message(
+      "Could not load documents: " + error.message +
+      " — check that the API is running.",
+      "error"
+    );
+  }
+}
+async function uploadFile(file) {
+  if (!file) return;
+  if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) {
+    message("Please choose a PDF, PNG, JPG or JPEG file.", "error"); return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    message("This file exceeds the 10 MB upload limit.", "error"); return;
+  }
+  busy = true;
+  $("chooseFile").disabled = true;
+  message("Uploading " + file.name + "…");
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const result = await api("/documents", {method:"POST", body:form});
+    const filename = result.saved_filename;
+    if (!filename) throw new Error("The API did not return saved_filename.");
+    selectedFilename = filename;
+    message("Upload successful. Processing document…", "success");
+    await refreshDocuments();
+    if (documents[filename]) selectDocument(filename);
+
+    for (let i = 0; i < 120; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      const latest = await api("/documents");
+      documents = latest && typeof latest === "object" ? latest : {};
+      renderStats(); renderRows();
+      const doc = documents[filename];
+      if (doc) selectDocument(filename);
+      if (doc && ["completed","failed","needs_ocr"].includes(doc.processing_status)) {
+        message(doc.processing_status === "failed"
+          ? "Processing failed. Check the validation panel."
+          : "Processing finished. Review extracted fields and any warnings.",
+          doc.processing_status === "failed" ? "error" : "success");
+        return;
+      }
+    }
+    message("Processing is taking longer than expected. Use Refresh to check status.", "error");
+  } catch (error) {
+    message("Upload failed: " + error.message, "error");
+  } finally {
+    busy = false;
+    $("chooseFile").disabled = false;
+    $("fileInput").value = "";
+  }
+}
+$("chooseFile").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", event => uploadFile(event.target.files[0]));
+$("dropzone").addEventListener("click", event => {
+  if (event.target.closest("button") || event.target.id === "dropzone") $("fileInput").click();
+});
+$("dropzone").addEventListener("dragover", event => {
+  event.preventDefault(); $("dropzone").classList.add("dragover");
+});
+$("dropzone").addEventListener("dragleave", () => $("dropzone").classList.remove("dragover"));
+$("dropzone").addEventListener("drop", event => {
+  event.preventDefault(); $("dropzone").classList.remove("dragover");
+  uploadFile(event.dataTransfer.files[0]);
+});
+$("refreshButton").addEventListener("click", refreshDocuments);
+$("copyTextButton").addEventListener("click", async () => {
+  if (!extractedTextValue) { message("No extracted text available to copy.", "error"); return; }
+  try { await navigator.clipboard.writeText(extractedTextValue); message("Extracted text copied.", "success"); }
+  catch { message("Clipboard access failed. Select the extracted text manually.", "error"); }
+});
+$("copyDataButton").addEventListener("click", async () => {
+  if (!selectedData) { message("No structured data available to copy.", "error"); return; }
+  try { await navigator.clipboard.writeText(JSON.stringify(selectedData,null,2)); message("Structured JSON copied.", "success"); }
+  catch { message("Clipboard access failed.", "error"); }
+});
+$("viewOriginalButton").addEventListener("click", () => {
+    if (!selectedFilename) {
+        alert("Please select a document first.");
+        return;
+    }
+
+    const url =
+        `/documents/${encodeURIComponent(selectedFilename)}/file`;
+
+    window.open(url, "_blank", "noopener");
+});
+const detailsSection = $("detailsSection");
+const viewDetailsButton = $("viewDetailsButton");
+
+function updateDetailsButton() {
+  const isHidden = detailsSection.classList.contains("hidden");
+
+  viewDetailsButton.textContent = isHidden
+    ? "◎ View Details"
+    : "◎ Hide Details";
+}
+
+viewDetailsButton.addEventListener("click", () => {
+  detailsSection.classList.toggle("hidden");
+  updateDetailsButton();
+
+  if (!detailsSection.classList.contains("hidden")) {
+    detailsSection.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest"
+    });
+  }
+});
+
+updateDetailsButton();
+document.querySelectorAll(".nav button").forEach(button => {
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".nav button").forEach(b => b.classList.remove("active"));
+    button.classList.add("active");
+    const view = button.dataset.view;
+    $("settingsPanel").classList.toggle("hidden", view !== "settings");
+    if (view === "upload") $("uploadPanel").scrollIntoView({behavior:"smooth",block:"center"});
+    if (view === "documents") $("documentsPanel").scrollIntoView({behavior:"smooth",block:"start"});
+    if (view === "dashboard") window.scrollTo({top:0,behavior:"smooth"});
+    if (view === "settings") $("settingsPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  });
+});
+refreshDocuments();
+setInterval(refreshDocuments, 8000);
+</script>
+</body>
+</html>

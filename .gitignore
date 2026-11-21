@@ -1,0 +1,54 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+.venv/
+.venv314/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploaded documents and local data
+uploads/
+documents.json
+documents.json.lock
+documents_corrupted_backup.json
+
+# AWS credentials
+.aws/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Local backups and test files
+documents.json.pre-docker-backup
+s3-test.txt
+--version.txt
+
+# Additional secrets and credentials
+*.pem
+*.key
+credentials
+credentials.*
+.env
+
+# Terraform local state and variables
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
