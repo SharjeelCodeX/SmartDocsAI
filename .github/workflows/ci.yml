@@ -1,3 +1,4 @@
+
 name: SmartDocs AI CI
 
 on:
@@ -33,3 +34,15 @@ jobs:
       - name: Check Python syntax
         run: |
           python -m compileall -q api.py worker.py main.py requeue_pending.py test_s3.py
+
+  docker-build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t smartdocs-ai:ci .
