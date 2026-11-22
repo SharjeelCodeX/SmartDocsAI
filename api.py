@@ -34,8 +34,10 @@ import shutil
 
 BASE_DIR = Path(__file__).resolve().parent
 
-UPLOAD_FOLDER = BASE_DIR / "uploads"
-METADATA_FILE = BASE_DIR / "documents.json"
+DATA_DIR = Path(os.getenv("SMARTDOCS_DATA_DIR", str(BASE_DIR))).resolve()
+
+UPLOAD_FOLDER = DATA_DIR / "uploads"
+METADATA_FILE = DATA_DIR / "documents.json"
 STATIC_FOLDER = BASE_DIR / "static"
 
 app = FastAPI(title="SmartDocs AI")
