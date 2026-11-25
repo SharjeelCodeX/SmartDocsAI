@@ -77,28 +77,79 @@ jobs:
       id-token: write
 
     steps:
-      - name: Diagnose GitHub OIDC token claims
+      - name: Authenticate with AWS using GitHub OIDC
         shell: bash
         run: |
+          set -euo pipefail
+
+          echo "Requesting GitHub OIDC token..."
+
           RESPONSE=$(curl -fsS \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
 
           TOKEN=$(echo "$RESPONSE" | jq -r '.value')
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "ERROR: GitHub did not provide an OIDC token."
+            exit 1
+          fi
+
           export TOKEN
 
-          python -c 'import os,json,base64; p=os.environ["TOKEN"].split(".")[1]; p += "="*(-len(p)%4); c=json.loads(base64.urlsafe_b64decode(p)); [print(k,":",c.get(k)) for k in ["iss","aud","sub","repository_id","repository_owner_id","ref"]]'
+          echo "===== GitHub OIDC token claims ====="
 
-      - name: Configure AWS credentials using GitHub OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::556957333669:role/GitHubSmartDocsDeployRole
-          aws-region: eu-north-1
+          python - <<'PY'
+          import os
+          import json
+          import base64
+
+          token = os.environ["TOKEN"]
+          header, payload = token.split(".")[:2]
+
+          def decode(value):
+              value += "=" * (-len(value) % 4)
+              return json.loads(base64.urlsafe_b64decode(value))
+
+          h = decode(header)
+          c = decode(payload)
+
+          print("JWT algorithm:", h.get("alg"))
+          print("JWT key ID:", h.get("kid"))
+
+          for key in ["iss", "aud", "sub", "repository_id", "repository_owner_id", "ref"]:
+              print(f"{key}: {c.get(key)}")
+          PY
+
+          echo "===== Calling AWS STS directly ====="
+
+          aws sts assume-role-with-web-identity \
+            --role-arn "arn:aws:iam::556957333669:role/GitHubSmartDocsDeployRole" \
+            --role-session-name "SmartDocsGitHubActions" \
+            --web-identity-token "$TOKEN" \
+            --duration-seconds 3600 \
+            --output json > /tmp/aws-credentials.json
+
+          echo "AWS STS authentication successful."
+
+          echo "AWS_ACCESS_KEY_ID=$(jq -r '.Credentials.AccessKeyId' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
+          echo "AWS_SECRET_ACCESS_KEY=$(jq -r '.Credentials.SecretAccessKey' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
+          echo "AWS_SESSION_TOKEN=$(jq -r '.Credentials.SessionToken' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
+          echo "AWS_DEFAULT_REGION=eu-north-1" >> "$GITHUB_ENV"
+          echo "AWS_REGION=eu-north-1" >> "$GITHUB_ENV"
+
+          rm -f /tmp/aws-credentials.json
+
+          echo "===== Verifying assumed AWS identity ====="
+
+          aws sts get-caller-identity
 
       - name: Deploy application through AWS Systems Manager
         id: deploy
         shell: bash
         run: |
+          set -euo pipefail
+
           DEPLOY_COMMAND='cd /home/ubuntu/smartdocs-ai && sudo docker compose pull && sudo docker compose up -d --no-build --force-recreate api worker && for i in $(seq 1 30); do if curl -fsS -o /dev/null http://127.0.0.1:8000/app && sudo docker inspect -f "{{.State.Running}}" smartdocs-worker | grep -qx true; then echo DEPLOYMENT_HEALTHY; exit 0; fi; sleep 5; done; echo DEPLOYMENT_HEALTH_CHECK_FAILED; sudo docker compose ps; sudo docker compose logs --tail=50 api worker; exit 1'
 
           COMMAND_ID=$(aws ssm send-command \
@@ -114,6 +165,8 @@ jobs:
       - name: Wait for deployment and health verification
         shell: bash
         run: |
+          set -euo pipefail
+
           COMMAND_ID="${{ steps.deploy.outputs.command_id }}"
           INSTANCE_ID="i-03d369332ab536993"
           STATUS="Pending"
