@@ -82,7 +82,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Requesting GitHub OIDC token..."
+          echo "===== STEP 1: Request GitHub OIDC token ====="
 
           RESPONSE=$(curl -fsS \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
@@ -91,13 +91,13 @@ jobs:
           TOKEN=$(echo "$RESPONSE" | jq -r '.value')
 
           if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
-            echo "ERROR: GitHub did not provide an OIDC token."
+            echo "ERROR: GitHub OIDC token unavailable."
             exit 1
           fi
 
           export TOKEN
 
-          echo "===== GitHub OIDC token claims ====="
+          echo "===== STEP 2: Verify token claims ====="
 
           python - <<'PY'
           import os
@@ -114,33 +114,154 @@ jobs:
           h = decode(header)
           c = decode(payload)
 
-          print("JWT algorithm:", h.get("alg"))
-          print("JWT key ID:", h.get("kid"))
+          print("Algorithm:", h.get("alg"))
+          print("Signing key ID:", h.get("kid"))
 
-          for key in ["iss", "aud", "sub", "repository_id", "repository_owner_id", "ref"]:
+          for key in ["iss", "aud", "sub", "repository_id",
+                      "repository_owner_id", "ref", "exp", "iat"]:
               print(f"{key}: {c.get(key)}")
+
+          if c.get("iss") != "https://token.actions.githubusercontent.com":
+              raise SystemExit("ERROR: Unexpected OIDC issuer.")
+
+          if c.get("aud") != "sts.amazonaws.com":
+              raise SystemExit("ERROR: Unexpected OIDC audience.")
+
+          if h.get("alg") != "RS256":
+              raise SystemExit("ERROR: Unexpected signing algorithm.")
+
           PY
 
-          echo "===== Calling AWS STS directly ====="
+          echo "===== STEP 3: Check GitHub OIDC discovery ====="
+
+          curl -fsS \
+            https://token.actions.githubusercontent.com/.well-known/openid-configuration \
+            -o /tmp/oidc-discovery.json
+
+          python - <<'PY'
+          import json
+
+          with open("/tmp/oidc-discovery.json") as f:
+              data = json.load(f)
+
+          print("Issuer:", data.get("issuer"))
+          print("JWKS URI:", data.get("jwks_uri"))
+          print("Supported algorithms:", data.get("id_token_signing_alg_values_supported"))
+
+          if data.get("issuer") != "https://token.actions.githubusercontent.com":
+              raise SystemExit("ERROR: Discovery issuer mismatch.")
+          PY
+
+          echo "===== STEP 4: Verify signing key in GitHub JWKS ====="
+
+          JWKS_URI=$(python -c \
+            'import json; print(json.load(open("/tmp/oidc-discovery.json"))["jwks_uri"])')
+
+          TOKEN_KID=$(python -c \
+            'import os,json,base64; p=os.environ["TOKEN"].split(".")[0]; p+="="*(-len(p)%4); print(json.loads(base64.urlsafe_b64decode(p))["kid"])')
+
+          echo "Token signing key ID: $TOKEN_KID"
+          echo "JWKS URI: $JWKS_URI"
+
+          curl -fsS -D /tmp/jwks-headers "$JWKS_URI" -o /tmp/jwks.json
+
+          echo "JWKS response headers:"
+          grep -iE 'HTTP/|cache-control|content-type' /tmp/jwks-headers || true
+
+          python - <<'PY'
+          import json
+          import os
+
+          kid = os.environ["TOKEN_KID"]
+
+          with open("/tmp/jwks.json") as f:
+              data = json.load(f)
+
+          keys = data.get("keys", [])
+          matches = [key for key in keys if key.get("kid") == kid]
+
+          print("Total signing keys:", len(keys))
+          print("Matching signing keys:", len(matches))
+
+          for key in matches:
+              print({
+                  "kid": key.get("kid"),
+                  "kty": key.get("kty"),
+                  "alg": key.get("alg"),
+                  "use": key.get("use")
+              })
+
+          if len(matches) != 1:
+              raise SystemExit(
+                  "ERROR: JWT signing key is missing or duplicated in GitHub JWKS."
+              )
+          PY
+
+          echo "===== STEP 5: Inspect GitHub TLS certificate chain ====="
+
+          mkdir -p /tmp/oidc-certs
+
+          openssl s_client \
+            -servername token.actions.githubusercontent.com \
+            -showcerts \
+            -connect token.actions.githubusercontent.com:443 \
+            </dev/null > /tmp/oidc-tls.txt 2>&1
+
+          grep -E 'Verify return code|Verification:' /tmp/oidc-tls.txt || true
+
+          awk '
+          /-----BEGIN CERTIFICATE-----/ {
+              n++
+              file=sprintf("/tmp/oidc-certs/cert-%02d.pem", n)
+          }
+          file { print > file }
+          /-----END CERTIFICATE-----/ {
+              close(file)
+              file=""
+          }
+          ' /tmp/oidc-tls.txt
+
+          for CERT in /tmp/oidc-certs/*.pem; do
+            echo "Certificate: $CERT"
+            openssl x509 -in "$CERT" -noout \
+              -subject -issuer -fingerprint -sha1
+          done
+
+          echo "===== STEP 6: Request AWS STS authentication ====="
 
           aws sts assume-role-with-web-identity \
             --role-arn "arn:aws:iam::556957333669:role/GitHubSmartDocsDeployRole" \
             --role-session-name "SmartDocsGitHubActions" \
             --web-identity-token "$TOKEN" \
             --duration-seconds 3600 \
+            --region eu-north-1 \
             --output json > /tmp/aws-credentials.json
 
           echo "AWS STS authentication successful."
 
-          echo "AWS_ACCESS_KEY_ID=$(jq -r '.Credentials.AccessKeyId' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
-          echo "AWS_SECRET_ACCESS_KEY=$(jq -r '.Credentials.SecretAccessKey' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
-          echo "AWS_SESSION_TOKEN=$(jq -r '.Credentials.SessionToken' /tmp/aws-credentials.json)" >> "$GITHUB_ENV"
-          echo "AWS_DEFAULT_REGION=eu-north-1" >> "$GITHUB_ENV"
-          echo "AWS_REGION=eu-north-1" >> "$GITHUB_ENV"
+          echo "===== STEP 7: Export temporary AWS credentials ====="
+
+          ACCESS_KEY=$(jq -r '.Credentials.AccessKeyId' /tmp/aws-credentials.json)
+          SECRET_KEY=$(jq -r '.Credentials.SecretAccessKey' /tmp/aws-credentials.json)
+          SESSION_TOKEN=$(jq -r '.Credentials.SessionToken' /tmp/aws-credentials.json)
+
+          echo "::add-mask::$ACCESS_KEY"
+          echo "::add-mask::$SECRET_KEY"
+          echo "::add-mask::$SESSION_TOKEN"
+
+          {
+            echo "AWS_ACCESS_KEY_ID=$ACCESS_KEY"
+            echo "AWS_SECRET_ACCESS_KEY=$SECRET_KEY"
+            echo "AWS_SESSION_TOKEN=$SESSION_TOKEN"
+            echo "AWS_DEFAULT_REGION=eu-north-1"
+            echo "AWS_REGION=eu-north-1"
+          } >> "$GITHUB_ENV"
 
           rm -f /tmp/aws-credentials.json
 
-          echo "===== Verifying assumed AWS identity ====="
+          unset TOKEN ACCESS_KEY SECRET_KEY SESSION_TOKEN
+
+          echo "===== STEP 8: Verify AWS identity ====="
 
           aws sts get-caller-identity
 
